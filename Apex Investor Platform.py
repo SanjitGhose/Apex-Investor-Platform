@@ -6,7 +6,6 @@ import warnings
 import json
 import bcrypt
 from email_validator import validate_email, EmailNotValidError
-import time # Import the time library for a simulated delay
 
 warnings.filterwarnings('ignore')
 
@@ -14,7 +13,7 @@ warnings.filterwarnings('ignore')
 
 # Page configuration
 st.set_page_config(
-    page_title="Apex Investor Platform",
+    page_title="Apex Investor Platform", # Renamed app title
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -55,6 +54,7 @@ st.markdown("""
         margin: 0;
         font-weight: bold;
     }
+    /* Removed .disclaimer CSS as the block is removed */
     .success-message {
         background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
         padding: 1.5rem;
@@ -211,21 +211,6 @@ def hash_password(password):
 def check_password(password, hashed):
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
-# --- SIMULATED EMAIL FUNCTION ---
-
-def send_email_report(recipient_email, report_data):
-    """
-    Simulates sending a professional-grade report via email.
-    This function doesn't actually send an email, it just displays a
-    success message to the user after a brief delay.
-    """
-    with st.spinner('Generating and sending your report...'):
-        time.sleep(3)  # Simulate network delay for a more realistic feel
-    
-    st.info(f"A detailed report for '{report_data['goal']['name']}' has been sent to {recipient_email}. (Simulated)")
-    
-    return True, "Report successfully generated and sent to your email!"
-
 # --- STATE MANAGEMENT & SESSION ---
 
 # State initialization
@@ -248,9 +233,11 @@ def phase_1():
     st.markdown("""
     <div class="investment-card">
         <h1>Apex Investor Platform</h1>
-        <p>Gain clarity on your financial journey by visualizing investment outcomes.</p>
+        <p>Unlock your financial potential by visualizing investment outcomes.</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Removed the disclaimer block as requested
     
     st.sidebar.header("📊 Investment Parameters")
     
@@ -502,7 +489,7 @@ def phase_4():
     """, unsafe_allow_html=True)
     
     st.markdown("""
-    <div class="info-box">
+    <div class="disclaimer">
         <strong>⚠️ IMPORTANT:</strong> This is a simulated process to demonstrate the steps required for actual investment.
         All data entered here is for educational purposes and will not be submitted to any authority.
     </div>
@@ -600,23 +587,17 @@ def phase_5():
     
     if current_future_value < inflation_adjusted_target:
         shortfall = inflation_adjusted_target - current_future_value
+        # This assumes the shortfall needs to be covered by additional monthly SIP over the remaining horizon
+        # For simplicity, using the same portfolio return. A more complex model might adjust this.
         remaining_horizon_months = final_plan['goal']['horizon'] * 12
         if final_plan['results']['portfolio_return'] > 0 and remaining_horizon_months > 0:
             monthly_return_rate = final_plan['results']['portfolio_return'] / 12
-            # Handle division by zero if monthly_return_rate is zero
-            if monthly_return_rate == 0:
-                st.markdown("""
-                <div class="info-box">
-                    To calculate additional investment needed, your portfolio must have a positive return.
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                additional_monthly_needed = shortfall / (((1 + monthly_return_rate) ** remaining_horizon_months - 1) / monthly_return_rate)
-                st.markdown(f"""
-                <div class="info-box">
-                    To reach your inflation-adjusted target of ₹{inflation_adjusted_target:,.0f}, you may need to invest an additional <strong>₹{additional_monthly_needed:,.0f} per month</strong>.
-                </div>
-                """, unsafe_allow_html=True)
+            additional_monthly_needed = shortfall / (((1 + monthly_return_rate) ** remaining_horizon_months - 1) / monthly_return_rate)
+            st.markdown(f"""
+            <div class="info-box">
+                To reach your inflation-adjusted target of ₹{inflation_adjusted_target:,.0f}, you may need to invest an additional <strong>₹{additional_monthly_needed:,.0f} per month</strong>.
+            </div>
+            """, unsafe_allow_html=True)
         else:
              st.markdown("""
             <div class="info-box">
@@ -638,9 +619,8 @@ def phase_5():
     """, unsafe_allow_html=True)
     
     if st.button("📧 Generate & Email Full Report", type="primary"):
-        send_email_report(st.session_state.user_email, st.session_state.final_plan)
-        st.success("Report successfully generated and sent to your email!")
-
+        st.success(f"Report has been successfully generated and sent to your email: {st.session_state.user_email}!")
+    
     if st.button("Restart & Explore More", type="secondary"):
         st.session_state.phase = 1
         st.session_state.authenticated = False
