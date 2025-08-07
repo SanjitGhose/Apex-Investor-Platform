@@ -6,6 +6,8 @@ import warnings
 import json
 import bcrypt
 from email_validator import validate_email, EmailNotValidError
+import time
+import os
 
 warnings.filterwarnings('ignore')
 
@@ -13,7 +15,7 @@ warnings.filterwarnings('ignore')
 
 # Page configuration
 st.set_page_config(
-    page_title="Apex Investor Platform", # Renamed app title
+    page_title="Apex Investor Platform",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -54,7 +56,6 @@ st.markdown("""
         margin: 0;
         font-weight: bold;
     }
-    /* Removed .disclaimer CSS as the block is removed */
     .success-message {
         background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
         padding: 1.5rem;
@@ -144,7 +145,6 @@ EDUCATIONAL_CONTENT = {
 def calculate_returns(amount, years, monthly_investment, allocation, scenario='normal', inflation=0.0):
     """Calculate returns with inflation adjustment"""
     
-    # Asset data defined within the function to prevent NameError
     asset_returns = {
         'normal': {'mutual_funds': 0.12, 'stocks': 0.15, 'fd': 0.06, 'bonds': 0.07, 'aif': 0.18},
         'bullish': {'mutual_funds': 0.18, 'stocks': 0.25, 'fd': 0.06, 'bonds': 0.07, 'aif': 0.28},
@@ -173,7 +173,6 @@ def calculate_returns(amount, years, monthly_investment, allocation, scenario='n
     total_future_value = fv_lumpsum + fv_monthly
     total_investment = amount + (monthly_investment * months)
     
-    # Inflation-adjusted value
     if inflation > 0:
         real_future_value = total_future_value / ((1 + inflation) ** years)
     else:
@@ -213,7 +212,6 @@ def check_password(password, hashed):
 
 # --- STATE MANAGEMENT & SESSION ---
 
-# State initialization
 if 'phase' not in st.session_state:
     st.session_state.phase = 1
 if 'authenticated' not in st.session_state:
@@ -221,6 +219,10 @@ if 'authenticated' not in st.session_state:
 if 'subscribed' not in st.session_state:
     st.session_state.subscribed = False
 if 'user_data' not in st.session_state:
+    if not os.path.exists('users.json'):
+        with open('users.json', 'w') as f:
+            json.dump({}, f)
+    
     try:
         with open('users.json', 'r') as f:
             st.session_state.user_data = json.load(f)
@@ -236,8 +238,6 @@ def phase_1():
         <p>Unlock your financial potential by visualizing investment outcomes.</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Removed the disclaimer block as requested
     
     st.sidebar.header("📊 Investment Parameters")
     
@@ -489,7 +489,7 @@ def phase_4():
     """, unsafe_allow_html=True)
     
     st.markdown("""
-    <div class="disclaimer">
+    <div class="info-box">
         <strong>⚠️ IMPORTANT:</strong> This is a simulated process to demonstrate the steps required for actual investment.
         All data entered here is for educational purposes and will not be submitted to any authority.
     </div>
@@ -583,21 +583,26 @@ def phase_5():
     # "How much more to invest?" calculation
     st.subheader("💰 How much more to invest?")
     current_future_value = final_plan['results']['future_value']
-    inflation_adjusted_target = final_plan['goal']['target'] * ((1 + 0.045) ** final_plan['goal']['horizon']) # Re-calculate with fixed 4.5% inflation
+    inflation_adjusted_target = final_plan['goal']['target'] * ((1 + 0.045) ** final_plan['goal']['horizon'])
     
     if current_future_value < inflation_adjusted_target:
         shortfall = inflation_adjusted_target - current_future_value
-        # This assumes the shortfall needs to be covered by additional monthly SIP over the remaining horizon
-        # For simplicity, using the same portfolio return. A more complex model might adjust this.
         remaining_horizon_months = final_plan['goal']['horizon'] * 12
         if final_plan['results']['portfolio_return'] > 0 and remaining_horizon_months > 0:
             monthly_return_rate = final_plan['results']['portfolio_return'] / 12
-            additional_monthly_needed = shortfall / (((1 + monthly_return_rate) ** remaining_horizon_months - 1) / monthly_return_rate)
-            st.markdown(f"""
-            <div class="info-box">
-                To reach your inflation-adjusted target of ₹{inflation_adjusted_target:,.0f}, you may need to invest an additional <strong>₹{additional_monthly_needed:,.0f} per month</strong>.
-            </div>
-            """, unsafe_allow_html=True)
+            if monthly_return_rate == 0:
+                st.markdown("""
+                <div class="info-box">
+                    To calculate additional investment needed, your portfolio must have a positive return.
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                additional_monthly_needed = shortfall / (((1 + monthly_return_rate) ** remaining_horizon_months - 1) / monthly_return_rate)
+                st.markdown(f"""
+                <div class="info-box">
+                    To reach your inflation-adjusted target of ₹{inflation_adjusted_target:,.0f}, you may need to invest an additional <strong>₹{additional_monthly_needed:,.0f} per month</strong>.
+                </div>
+                """, unsafe_allow_html=True)
         else:
              st.markdown("""
             <div class="info-box">
@@ -625,8 +630,8 @@ def phase_5():
         st.session_state.phase = 1
         st.session_state.authenticated = False
         st.session_state.subscribed = False
-        st.session_state.user_email = None # Clear user email on restart
-        st.session_state.final_plan = None # Clear final plan on restart
+        st.session_state.user_email = None
+        st.session_state.final_plan = None
         st.rerun()
 
 # --- MAIN APP LOGIC ---
